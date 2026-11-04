@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gnn-assembler"
+version = "0.1.0"
+description = "Graph-neural assembly-by-disassembly planning and 3MF job generation"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "torch>=2.1",
+    "trimesh>=4.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+gnn-assemble = "gnn_assembler.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gnn_assembler*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
