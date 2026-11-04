@@ -18,9 +18,10 @@ from gnn_assembler.geometry.collision import (
 )
 from gnn_assembler.geometry.meshutil import mesh_distance
 
-FEATURE_DIM = 11
+FEATURE_DIM = 17
 JOINT_TYPES = ("rigid", "revolute", "prismatic")
 CONTACT_TOL = 1e-4
+_DOWN = np.array([0.0, 0.0, -1.0])
 
 
 @dataclass
@@ -143,6 +144,68 @@ def _bbox(part: Part) -> tuple[np.ndarray, np.ndarray]:
     return low, high
 
 
+def _gravity_features(part: Part) -> tuple[np.ndarray, np.ndarray]:
+    """Mesh center of gravity, and the direction from the ground-facing face to it.
+
+    Triangles that share a plane and a downward normal form one face. The chosen
+    face is the largest of those. The direction is the unit vector from that
+    face's center to the center of gravity.
+    """
+
+    vertices = part.vertices
+    faces = part.faces
+    if len(vertices) == 0:
+        return np.zeros(3), _DOWN.copy()
+    if len(faces) == 0:
+        return vertices.mean(axis=0), _DOWN.copy()
+    triangles = vertices[faces]
+    cross = np.cross(triangles[:, 1] - triangles[:, 0], triangles[:, 2] - triangles[:, 0])
+    lengths = np.linalg.norm(cross, axis=1)
+    areas = 0.5 * lengths
+    centers = triangles.mean(axis=1)
+    weight = float(areas.sum())
+    if weight <= 1e-12:
+        return vertices.mean(axis=0), _DOWN.copy()
+    cog = (centers * areas[:, None]).sum(axis=0) / weight
+    normals = cross / np.maximum(lengths, 1e-12)[:, None]
+    face_center = _ground_face_center(centers, normals, areas)
+    offset = cog - face_center
+    norm = float(np.linalg.norm(offset))
+    if norm <= 1e-12:
+        return cog, _DOWN.copy()
+    return cog, offset / norm
+
+
+def _ground_face_center(centers: np.ndarray, normals: np.ndarray, areas: np.ndarray) -> np.ndarray:
+    grouped: dict[tuple[float, float, float, float], list[float | np.ndarray]] = {}
+    alignment = normals @ _DOWN
+    usable = alignment > 1e-3
+    if not np.any(usable):
+        usable = alignment >= float(alignment.max()) - 1e-8
+    for center, normal, area, use in zip(centers, normals, areas, usable):
+        if not use or area <= 1e-12:
+            continue
+        direction = normal / max(float(np.linalg.norm(normal)), 1e-12)
+        if float(np.dot(direction, _DOWN)) < 0.0:
+            direction = -direction
+        key = (
+            round(float(direction[0]), 3),
+            round(float(direction[1]), 3),
+            round(float(direction[2]), 3),
+            round(float(np.dot(direction, center)), 4),
+        )
+        slot = grouped.get(key)
+        if slot is None:
+            grouped[key] = [float(area), center * area]
+        else:
+            slot[0] = float(slot[0]) + float(area)
+            slot[1] = slot[1] + center * area
+    if not grouped:
+        return centers[int(np.argmax(areas))]
+    _area, moment = max(grouped.values(), key=lambda item: float(item[0]))
+    return np.asarray(moment, dtype=float) / float(_area)
+
+
 def featurize_state(
     assembly: Assembly,
     graph: ContactGraph,
@@ -150,8 +213,9 @@ def featurize_state(
 ) -> tuple[np.ndarray, np.ndarray, list[int]]:
     """Node features and adjacency for the parts still assembled.
 
-    Features: centroid (3), bbox size (3), volume (1), degree (1), joint multi-hot (3).
-    Positions are scaled by the full assembly diagonal.
+    Features: centroid (3), bbox size (3), volume (1), degree (1), joint multi-hot (3),
+    mesh center of gravity (3), and the direction from the ground-facing face to that
+    center (3). Positions are scaled by the full assembly diagonal.
     """
 
     indices = sorted(remaining, key=lambda index: assembly.parts[index].name)
@@ -184,4 +248,7 @@ def featurize_state(
         for joint_index, name in enumerate(JOINT_TYPES):
             if name in joints[part_index]:
                 features[row, 8 + joint_index] = 1.0
+        cog, cog_direction = _gravity_features(part)
+        features[row, 11:14] = (cog - origin) / scale
+        features[row, 14:17] = cog_direction
     return features, adjacency, indices
