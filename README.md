@@ -34,6 +34,24 @@ gnn-assemble plan --dir samples --id rotational --checkpoint checkpoints/heurist
 
 `plan` prints the disassembly, the forward assembly, SCD, and CA. A feasible reverse of a checked plan sits on the designed geometry, so SCD is near zero and CA is 1 on these samples. CA uses a threshold of `0.01` times the assembly diagonal.
 
+## Folders
+
+Each directory has a `README.md` for what belongs there.
+
+| Path | Role |
+| --- | --- |
+| `gnn_assembler/` | Package and command line. |
+| `gnn_assembler/data/` | Mesh loading and sample generation. |
+| `gnn_assembler/geometry/` | Subdivision, collision, and the contact graph. |
+| `gnn_assembler/model/` | Removal network, training, SCD, and CA. |
+| `gnn_assembler/planning/` | Feasibility checks and the disassembly search. |
+| `gnn_assembler/execution/` | Insertion waypoints and G-code. |
+| `gnn_assembler/job/` | `Tasks.xml` and the 3MF package. |
+| `samples/` | Built-in peg, collar, and stack assemblies. |
+| `data/` | Your datasets. Unzip `joint_assembly.zip` to `data/joint_assembly/`. |
+| `tests/` | Pytest coverage for the stages above. |
+| `checkpoints/` | Created by `train`. Not committed. |
+
 ## External meshes
 
 The two-part, rotational, and multi-part research sets often cited with this problem are about 221.1MB, 5.4MB, and 778.4MB. A large part of that data is derived from the Fusion 360 Gallery dataset and stays under that license. This project does not download it. Point `--dir` at a local folder whose children are assemblies of already-posed meshes. Add `assembly.json` boxes when a part is concave; otherwise each mesh is treated as one bounding box.

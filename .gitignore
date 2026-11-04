@@ -8,3 +8,7 @@ build/
 .venv/
 checkpoints/
 *.3mf
+
+# Local datasets. The folder note stays tracked.
+data/*
+!data/README.md
