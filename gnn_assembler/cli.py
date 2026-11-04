@@ -51,10 +51,17 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "train":
             assemblies = discover(args.data)
-            result = train_model(assemblies, epochs=args.epochs, out=args.out, device=args.device)
+            result = train_model(
+                assemblies,
+                epochs=args.epochs,
+                out=args.out,
+                device=args.device,
+                log=True,
+            )
             print(
                 f"Saved {result.path} after {args.epochs} epochs. "
-                f"Final loss {result.losses[-1]:.4f}. SCD {result.scd:.6f}. CA {result.connectivity:.3f}."
+                f"Final loss {result.losses[-1]:.4f}. SCD {result.scd:.6f}. CA {result.connectivity:.3f}. "
+                f"Skipped {result.skipped}. Log {result.log_path}."
             )
             return 0
         if args.command == "plan":

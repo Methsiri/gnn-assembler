@@ -12,3 +12,9 @@ checkpoints/
 # Local datasets. The folder note stays tracked.
 data/*
 !data/README.md
+
+# Meshes dropped next to the loader. Package modules stay tracked.
+gnn_assembler/data/**/*.obj
+gnn_assembler/data/**/*.stl
+gnn_assembler/data/**/*.zip
+gnn_assembler/data/joint_assembly/

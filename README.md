@@ -34,6 +34,31 @@ gnn-assemble plan --dir samples --id rotational --checkpoint checkpoints/heurist
 
 `plan` prints the disassembly, the forward assembly, SCD, and CA. A feasible reverse of a checked plan sits on the designed geometry, so SCD is near zero and CA is 1 on these samples. CA uses a threshold of `0.01` times the assembly diagonal.
 
+## Train and test
+
+Run these from the repository root. `python -m gnn_assembler` works when the `gnn-assemble` script is not on `PATH`.
+
+Confirm progress on the built-in samples:
+
+```bash
+python -m gnn_assembler generate-samples --out samples
+python -m gnn_assembler train --data samples --epochs 2 --out checkpoints/heuristic.pt
+python -m gnn_assembler plan --dir samples --id stack --checkpoint checkpoints/heuristic.pt --output stack.3mf
+```
+
+Train on the joint assemblies, then plan one of them. `--data` and `--dir` must be the folder whose children are the numbered assemblies (`00000`, `00001`, and the rest). In this checkout that folder is `gnn_assembler/data/joint_assembly/joint_assembly` (8776 assemblies). Training prints each labeled assembly, then a loss after every epoch, then a score for each assembly. An assembly the planner cannot take apart is skipped and written to `checkpoints/heuristic.log` (the checkpoint name with a `.log` suffix). Labeling is the slow part.
+
+```bash
+python -m gnn_assembler train --data gnn_assembler/data/joint_assembly/joint_assembly --epochs 20 --out checkpoints/heuristic.pt
+python -m gnn_assembler plan --dir gnn_assembler/data/joint_assembly/joint_assembly --id 00000 --checkpoint checkpoints/heuristic.pt --output 00000.3mf
+```
+
+Run the unit tests:
+
+```bash
+python -m pytest
+```
+
 ## Folders
 
 Each directory has a `README.md` for what belongs there.
@@ -48,16 +73,11 @@ Each directory has a `README.md` for what belongs there.
 | `gnn_assembler/execution/` | Insertion waypoints and G-code. |
 | `gnn_assembler/job/` | `Tasks.xml` and the 3MF package. |
 | `samples/` | Built-in peg, collar, and stack assemblies. |
-| `data/` | Your datasets. Unzip `joint_assembly.zip` to `data/joint_assembly/`. |
+| `data/` | Intended place for your own datasets. See `data/README.md`. |
+| `gnn_assembler/data/joint_assembly/joint_assembly/` | Numbered two-part assemblies used by the train and plan commands above. |
 | `tests/` | Pytest coverage for the stages above. |
 | `checkpoints/` | Created by `train`. Not committed. |
 
 ## External meshes
 
 The two-part, rotational, and multi-part research sets often cited with this problem are about 221.1MB, 5.4MB, and 778.4MB. A large part of that data is derived from the Fusion 360 Gallery dataset and stays under that license. This project does not download it. Point `--dir` at a local folder whose children are assemblies of already-posed meshes. Add `assembly.json` boxes when a part is concave; otherwise each mesh is treated as one bounding box.
-
-## Tests
-
-```bash
-python -m pytest
-```

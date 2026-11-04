@@ -98,4 +98,5 @@ def _load_bare(root: Path) -> Assembly:
         vertices, faces = load_mesh(mesh_path)
         obbs = [obb_from_bounds(vertices.min(axis=0), vertices.max(axis=0))]
         parts.append(Part(mesh_path.stem, vertices, faces, obbs, 1.0))
-    return Assembly(root.name, parts, [], 0.0, root)
+    ground_z = min(float(part.vertices[:, 2].min()) for part in parts)
+    return Assembly(root.name, parts, [], ground_z, root)
